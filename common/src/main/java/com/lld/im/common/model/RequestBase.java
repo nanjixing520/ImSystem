@@ -17,4 +17,8 @@ public class RequestBase {
      * 接口供不同的应用去使用，需用appId区分应用的类型
      */
     private Integer appId;
+    /**
+     * 操作员(判断自己是不是收到审批的对象，看自己有没有审批的资格)
+     */
+    private String operater;
 }

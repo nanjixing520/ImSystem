@@ -7,6 +7,7 @@ import com.lld.im.common.enums.AllowFriendTypeEnum;
 import com.lld.im.common.enums.CheckFriendShipTypeEnum;
 import com.lld.im.common.enums.FriendShipErrorCode;
 import com.lld.im.common.enums.FriendShipStatusEnum;
+import com.lld.im.common.exception.ApplicationException;
 import com.lld.im.common.model.RequestBase;
 import com.lld.im.service.friendship.dao.ImFriendShipEntity;
 import com.lld.im.service.friendship.dao.mapper.ImFriendShipMapper;
@@ -49,7 +50,7 @@ public class ImFriendServiceImpl implements ImFriendShipService {
     @Override
     public ResponseVO importFriendShip(ImportFriendShipReq req) {
         if(req.getFriendItem().size()>100){
-            //TODO:返回数量过多
+            //返回数量过多
             return ResponseVO.errorResponse(FriendShipErrorCode.IMPORT_SIZE_BEYOND);
         }
         ImportFriendShipResp resp = new ImportFriendShipResp();
@@ -249,7 +250,7 @@ public class ImFriendServiceImpl implements ImFriendShipService {
     }
 
     /**
-     * TODO：只删除了一方的关系链？
+     * 只删除了一方的关系链
      * @param req
      * @return
      */
@@ -302,9 +303,21 @@ public class ImFriendServiceImpl implements ImFriendShipService {
         return ResponseVO.successResponse(imFriendShipMapper.selectList(query));
     }
 
+    /**
+     * 先初始化一个map，存放请求的id，status都初始化成0，
+     * 然后查表将得到的数据也存放在一个新的map中，
+     * 然后遍历请求体的map，如果不包含在查表得到的map里，
+     * 说明给定的id不存在，将id和status=0加入结果集
+     * @param req
+     * @return
+     */
     @Override
     public ResponseVO checkFriendship(CheckFriendShipReq req) {
-
+         //也可以使用for循环赋值(等价效果)
+//        Map<String,Integer> result1 = new HashMap<>();
+//        for(String id:req.getToIds()){
+//            result1.put(id,0);
+//        }
         Map<String, Integer> result
                 = req.getToIds().stream()
                 .collect(Collectors.toMap(Function.identity(), s -> 0));
@@ -346,5 +359,104 @@ public class ImFriendServiceImpl implements ImFriendShipService {
             return ResponseVO.errorResponse(FriendShipErrorCode.REPEATSHIP_IS_NOT_EXIST);
         }
         return ResponseVO.successResponse(entity);
+    }
+    @Override
+    public ResponseVO checkBlck(CheckFriendShipReq req) {
+
+        Map<String, Integer> toIdMap
+                = req.getToIds().stream().collect(Collectors
+                .toMap(Function.identity(), s -> 0));
+        List<CheckFriendShipResp> result = new ArrayList<>();
+        if (req.getCheckType() == CheckFriendShipTypeEnum.SINGLE.getType()) {
+            result = imFriendShipMapper.checkFriendShipBlack(req);
+        } else {
+            result = imFriendShipMapper.checkFriendShipBlackBoth(req);
+        }
+
+        Map<String, Integer> collect = result.stream()
+                .collect(Collectors
+                        .toMap(CheckFriendShipResp::getToId,
+                                CheckFriendShipResp::getStatus));
+        for (String toId:
+                toIdMap.keySet()) {
+            if(!collect.containsKey(toId)){
+                CheckFriendShipResp checkFriendShipResp = new CheckFriendShipResp();
+                checkFriendShipResp.setToId(toId);
+                checkFriendShipResp.setFromId(req.getFromId());
+                checkFriendShipResp.setStatus(toIdMap.get(toId));
+                result.add(checkFriendShipResp);
+            }
+        }
+
+        return ResponseVO.successResponse(result);
+    }
+
+
+    @Override
+    public ResponseVO addBlack(AddFriendShipBlackReq req) {
+
+        ResponseVO<ImUserDataEntity> fromInfo = imUserService.getSingleUserInfo(req.getFromId(), req.getAppId());
+        if(!fromInfo.isOk()){
+            return fromInfo;
+        }
+
+        ResponseVO<ImUserDataEntity> toInfo = imUserService.getSingleUserInfo(req.getToId(), req.getAppId());
+        if(!toInfo.isOk()){
+            return toInfo;
+        }
+        QueryWrapper<ImFriendShipEntity> query = new QueryWrapper<>();
+        query.eq("app_id",req.getAppId());
+        query.eq("from_id",req.getFromId());
+        query.eq("to_id",req.getToId());
+
+        ImFriendShipEntity fromItem = imFriendShipMapper.selectOne(query);
+        if(fromItem == null){
+            //走添加逻辑。
+            fromItem = new ImFriendShipEntity();
+            fromItem.setFromId(req.getFromId());
+            fromItem.setToId(req.getToId());
+            fromItem.setAppId(req.getAppId());
+            fromItem.setBlack(FriendShipStatusEnum.BLACK_STATUS_BLACKED.getCode());
+            fromItem.setCreateTime(System.currentTimeMillis());
+            int insert = imFriendShipMapper.insert(fromItem);
+            if(insert != 1){
+                return ResponseVO.errorResponse(FriendShipErrorCode.ADD_FRIEND_ERROR);
+            }
+
+        } else{
+            //如果存在则判断状态，如果是拉黑，则提示已拉黑，如果是未拉黑，则修改状态
+            if(fromItem.getBlack() != null && fromItem.getBlack() == FriendShipStatusEnum.BLACK_STATUS_BLACKED.getCode()){
+                return ResponseVO.errorResponse(FriendShipErrorCode.FRIEND_IS_BLACK);
+            } else {
+                ImFriendShipEntity update = new ImFriendShipEntity();
+                update.setBlack(FriendShipStatusEnum.BLACK_STATUS_BLACKED.getCode());
+                int result = imFriendShipMapper.update(update, query);
+                if(result != 1){
+                    return ResponseVO.errorResponse(FriendShipErrorCode.ADD_BLACK_ERROR);
+                }
+            }
+        }
+
+        return ResponseVO.successResponse();
+    }
+
+    @Override
+    public ResponseVO deleteBlack(DeleteBlackReq req) {
+        QueryWrapper queryFrom = new QueryWrapper<>()
+                .eq("from_id", req.getFromId())
+                .eq("app_id", req.getAppId())
+                .eq("to_id", req.getToId());
+        ImFriendShipEntity fromItem = imFriendShipMapper.selectOne(queryFrom);
+        if (fromItem.getBlack() != null && fromItem.getBlack() == FriendShipStatusEnum.BLACK_STATUS_NORMAL.getCode()) {
+            throw new ApplicationException(FriendShipErrorCode.FRIEND_IS_NOT_YOUR_BLACK);
+        }
+
+        ImFriendShipEntity update = new ImFriendShipEntity();
+        update.setBlack(FriendShipStatusEnum.BLACK_STATUS_NORMAL.getCode());
+        int update1 = imFriendShipMapper.update(update, queryFrom);
+        if(update1 == 1){
+            return ResponseVO.successResponse();
+        }
+        return ResponseVO.errorResponse();
     }
 }
