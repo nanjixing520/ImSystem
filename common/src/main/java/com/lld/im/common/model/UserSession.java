@@ -43,4 +43,8 @@ public class UserSession {
      * 服务器Ip地址
      */
     private String brokerHost;
+    /**
+     * 区分同一客户端类型的不同设备号
+     */
+    private String imei;
 }

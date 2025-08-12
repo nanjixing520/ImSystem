@@ -1,7 +1,11 @@
 package com.lld.im.service.friendship.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.lld.im.codec.pack.friendship.AddFriendGroupMemberPack;
+import com.lld.im.codec.pack.friendship.DeleteFriendGroupMemberPack;
 import com.lld.im.common.ResponseVO;
+import com.lld.im.common.enums.command.FriendshipEventCommand;
+import com.lld.im.common.model.ClientInfo;
 import com.lld.im.service.friendship.dao.ImFriendShipGroupEntity;
 import com.lld.im.service.friendship.dao.ImFriendShipGroupMemberEntity;
 import com.lld.im.service.friendship.dao.mapper.ImFriendShipGroupMemberMapper;
@@ -11,6 +15,7 @@ import com.lld.im.service.friendship.service.ImFriendShipGroupMemberService;
 import com.lld.im.service.friendship.service.ImFriendShipGroupService;
 import com.lld.im.service.user.dao.ImUserDataEntity;
 import com.lld.im.service.user.service.ImUserService;
+import com.lld.im.service.utils.MessageProducer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +45,8 @@ public class ImFriendShipGroupMemberServiceImpl implements ImFriendShipGroupMemb
 
     @Autowired
     ImFriendShipGroupMemberService thisService;
+    @Autowired
+    MessageProducer messageProducer;
 
     @Override
     @Transactional
@@ -61,6 +68,13 @@ public class ImFriendShipGroupMemberServiceImpl implements ImFriendShipGroupMemb
                 }
             }
         }
+        //TCP通知：发送给除了本端的其他端为分组添加成员的消息
+        AddFriendGroupMemberPack pack = new AddFriendGroupMemberPack();
+        pack.setFromId(req.getFromId());
+        pack.setGroupName(req.getGroupName());
+        pack.setToIds(successId);
+        messageProducer.sendToUserExceptClient(req.getFromId(), FriendshipEventCommand.FRIEND_GROUP_MEMBER_ADD,
+                pack,new ClientInfo(req.getAppId(),req.getClientType(),req.getImei()));
 
         return ResponseVO.successResponse(successId);
     }
@@ -73,17 +87,24 @@ public class ImFriendShipGroupMemberServiceImpl implements ImFriendShipGroupMemb
             return group;
         }
 
-        ArrayList list = new ArrayList();
+        ArrayList successId = new ArrayList();
         for (String toId : req.getToIds()) {
             ResponseVO<ImUserDataEntity> singleUserInfo = imUserService.getSingleUserInfo(toId, req.getAppId());
             if(singleUserInfo.isOk()){
                 int i = deleteGroupMember(group.getData().getGroupId(), toId);
                 if(i == 1){
-                    list.add(toId);
+                    successId.add(toId);
                 }
             }
         }
-        return ResponseVO.successResponse(list);
+        //TCP通知：发送给除了本端的其他端删除分组成员的消息
+        DeleteFriendGroupMemberPack pack = new DeleteFriendGroupMemberPack();
+        pack.setFromId(req.getFromId());
+        pack.setGroupName(req.getGroupName());
+        pack.setToIds(successId);
+        messageProducer.sendToUserExceptClient(req.getFromId(), FriendshipEventCommand.FRIEND_GROUP_MEMBER_DELETE,
+                pack,new ClientInfo(req.getAppId(),req.getClientType(),req.getImei()));
+        return ResponseVO.successResponse(successId);
     }
 
     @Override
@@ -101,7 +122,7 @@ public class ImFriendShipGroupMemberServiceImpl implements ImFriendShipGroupMemb
     }
 
     /**
-     * 物理删除
+     * 内部调用：物理删除
      * @param groupId
      * @param toId
      * @return

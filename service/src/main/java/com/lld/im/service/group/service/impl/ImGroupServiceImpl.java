@@ -1,22 +1,31 @@
 package com.lld.im.service.group.service.impl;
 
+import com.alibaba.fastjson.JSONObject;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
+import com.lld.im.codec.pack.group.*;
 import com.lld.im.common.ResponseVO;
+import com.lld.im.common.config.AppConfig;
+import com.lld.im.common.constant.Constants;
 import com.lld.im.common.enums.GroupErrorCode;
 import com.lld.im.common.enums.GroupMemberRoleEnum;
 import com.lld.im.common.enums.GroupStatusEnum;
 import com.lld.im.common.enums.GroupTypeEnum;
+import com.lld.im.common.enums.command.GroupEventCommand;
 import com.lld.im.common.exception.ApplicationException;
+import com.lld.im.common.model.ClientInfo;
 import com.lld.im.service.group.dao.ImGroupEntity;
 import com.lld.im.service.group.dao.mapper.ImGroupMapper;
+import com.lld.im.service.group.model.callback.DestroyGroupAfterCallbackDto;
 import com.lld.im.service.group.model.req.*;
 import com.lld.im.service.group.model.resp.GetGroupResp;
 import com.lld.im.service.group.model.resp.GetJoinedGroupResp;
 import com.lld.im.service.group.model.resp.GetRoleInGroupResp;
 import com.lld.im.service.group.service.ImGroupMemberService;
 import com.lld.im.service.group.service.ImGroupService;
+import com.lld.im.service.utils.CallbackService;
+import com.lld.im.service.utils.GroupMessageProducer;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,6 +52,12 @@ public class ImGroupServiceImpl implements ImGroupService {
     private ImGroupMapper imGroupDataMapper;
     @Autowired
     private ImGroupMemberService groupMemberService;
+    @Autowired
+    private AppConfig appConfig;
+    @Autowired
+    private CallbackService callbackService;
+    @Autowired
+    private GroupMessageProducer groupMessageProducer;
 
     /**
      * 解散群组，只支持后台管理员和群主解散(私有群只能支持后台管理员删除，公开群都行)
@@ -83,9 +98,25 @@ public class ImGroupServiceImpl implements ImGroupService {
         if (update1 != 1) {
             throw new ApplicationException(GroupErrorCode.UPDATE_GROUP_BASE_INFO_ERROR);
         }
+        //之后回调
+        if(appConfig.isDestroyGroupAfterCallback()){
+            DestroyGroupAfterCallbackDto callbackDto = new DestroyGroupAfterCallbackDto();
+            callbackDto.setGroupId(req.getGroupId());
+            callbackService.callback(req.getAppId(),Constants.CallbackCommand.DestoryGroupAfter,JSONObject.toJSONString(callbackDto));
+        }
+        //TCP消息通知
+        DestroyGroupPack pack = new DestroyGroupPack();
+        pack.setGroupId(req.getGroupId());
+        groupMessageProducer.producer(req.getOperater(),
+                GroupEventCommand.DESTROY_GROUP, pack, new ClientInfo(req.getAppId(), req.getClientType(), req.getImei()));
         return ResponseVO.successResponse();
     }
 
+    /**
+     * +自己实现了移交群主TCP通知+
+     * @param req
+     * @return
+     */
     @Override
     @Transactional
     public ResponseVO transferGroup(TransferGroupReq req) {
@@ -118,11 +149,24 @@ public class ImGroupServiceImpl implements ImGroupService {
         updateGroupWrapper.eq("app_id", req.getAppId());
         updateGroupWrapper.eq("group_id", req.getGroupId());
         imGroupDataMapper.update(updateGroup, updateGroupWrapper);
-        groupMemberService.transferGroupMember(req.getOwnerId(), req.getGroupId(), req.getAppId());
+        ResponseVO responseVO = groupMemberService.transferGroupMember(req.getOwnerId(), req.getGroupId(), req.getAppId());
+        //+TCP通知自己完成+
+        if(responseVO.isOk()){
+            TransferGroupPack transferGroupPack = new TransferGroupPack();
+            transferGroupPack.setGroupId(req.getGroupId());
+            transferGroupPack.setOwnerId(req.getOwnerId());
+            groupMessageProducer.producer(req.getOperater(), GroupEventCommand.TRANSFER_GROUP, transferGroupPack
+                    , new ClientInfo(req.getAppId(), req.getClientType(), req.getImei()));
+        }
 
         return ResponseVO.successResponse();
     }
 
+    /**
+     * +禁言群组自己实现TCP通知+
+     * @param req
+     * @return
+     */
     @Override
     public ResponseVO muteGroup(MuteGroupReq req) {
 
@@ -162,8 +206,14 @@ public class ImGroupServiceImpl implements ImGroupService {
         UpdateWrapper<ImGroupEntity> wrapper = new UpdateWrapper<>();
         wrapper.eq("group_id",req.getGroupId());
         wrapper.eq("app_id",req.getAppId());
-        imGroupDataMapper.update(update,wrapper);
-
+        int i = imGroupDataMapper.update(update, wrapper);
+        //+自己实现TCP通知+
+        if(i==1){
+            MuteGroupPack muteGroupPack = new MuteGroupPack();
+            muteGroupPack.setGroupId(req.getGroupId());
+            groupMessageProducer.producer(req.getOperater(), GroupEventCommand.MUTE_GROUP, muteGroupPack
+                    , new ClientInfo(req.getAppId(), req.getClientType(), req.getImei()));
+        }
         return ResponseVO.successResponse();
     }
 
@@ -256,6 +306,15 @@ public class ImGroupServiceImpl implements ImGroupService {
                 groupMemberService.addGroupMember(req.getGroupId(), req.getAppId(), dto);
             }
         }
+        //之后回调
+        if(appConfig.isCreateGroupAfterCallback()){
+            callbackService.callback(req.getAppId(), Constants.CallbackCommand.CreateGroupAfter, JSONObject.toJSONString(imGroupEntity));
+        }
+        //TCP消息通知
+        CreateGroupPack createGroupPack = new CreateGroupPack();
+        BeanUtils.copyProperties(imGroupEntity, createGroupPack);
+        groupMessageProducer.producer(req.getOperater(), GroupEventCommand.CREATED_GROUP, createGroupPack
+                , new ClientInfo(req.getAppId(), req.getClientType(), req.getImei()));
         return ResponseVO.successResponse();
     }
 
@@ -350,6 +409,14 @@ public class ImGroupServiceImpl implements ImGroupService {
         if (row != 1) {
             throw new ApplicationException(GroupErrorCode.UPDATE_GROUP_BASE_INFO_ERROR);
         }
+        if(appConfig.isModifyGroupAfterCallback()){
+            callbackService.callback(req.getAppId(),Constants.CallbackCommand.UpdateGroupAfter,
+                    JSONObject.toJSONString(imGroupDataMapper.selectOne(query)));//将修改之后的群查出来返回给业务端
+        }
+        UpdateGroupInfoPack pack = new UpdateGroupInfoPack();
+        BeanUtils.copyProperties(req, pack);
+        groupMessageProducer.producer(req.getOperater(), GroupEventCommand.UPDATED_GROUP,
+                pack, new ClientInfo(req.getAppId(), req.getClientType(), req.getImei()));
 
         return ResponseVO.successResponse();
     }

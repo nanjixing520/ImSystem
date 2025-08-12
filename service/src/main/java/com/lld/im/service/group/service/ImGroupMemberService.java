@@ -46,4 +46,7 @@ public interface ImGroupMemberService {
     public ResponseVO updateGroupMember(UpdateGroupMemberReq req);
 
     public ResponseVO speak(SpeakMemberReq req);
+    public List<String> getGroupMemberId(String groupId, Integer appId);
+
+    public List<GroupMemberDto> getGroupManager(String groupId, Integer appId);
 }

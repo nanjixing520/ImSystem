@@ -2,10 +2,7 @@ package com.lld.im.service.user.service;
 
 import com.lld.im.common.ResponseVO;
 import com.lld.im.service.user.dao.ImUserDataEntity;
-import com.lld.im.service.user.model.req.DeleteUserReq;
-import com.lld.im.service.user.model.req.GetUserInfoReq;
-import com.lld.im.service.user.model.req.ImportUserReq;
-import com.lld.im.service.user.model.req.ModifyUserInfoReq;
+import com.lld.im.service.user.model.req.*;
 import com.lld.im.service.user.model.resp.GetUserInfoResp;
 
 /**
@@ -32,4 +29,6 @@ public interface ImUserService {
     public ResponseVO deleteUser(DeleteUserReq req);
 
     public ResponseVO modifyUserInfo(ModifyUserInfoReq req);
+
+    public ResponseVO login(LoginReq req);
 }

@@ -32,7 +32,7 @@ public class ModifyUserInfoReq extends RequestBase {
     // 个性签名
     private String selfSignature;
 
-    // 加好友验证类型（Friend_AllowType） 1需要验证
+    //加好友验证类型（Friend_AllowType） 1需要验证
     private Integer friendAllowType;
 
     private String extra;
