@@ -31,10 +31,10 @@ public class GateWayInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-
-//        if (1 == 1){
-//            return true;
-//        }
+        //消息发送测试先屏蔽拦截器
+        if (1 == 1){
+            return true;
+        }
 
         //获取appId 操作人 userSign
         String appIdStr = request.getParameter("appId");

@@ -25,11 +25,11 @@ public class AppConfig {
 
     /** im管道地址路由策略*/
     private Integer imRouteWay;
-//
-//    private boolean sendMessageCheckFriend; //发送消息是否校验关系链
-//
-//    private boolean sendMessageCheckBlack; //发送消息是否校验黑名单
-//
+
+    private boolean sendMessageCheckFriend; //发送消息是否校验关系链
+
+    private boolean sendMessageCheckBlack; //发送消息是否校验黑名单
+
     /** 如果选用一致性hash的话具体hash算法,比如用treemap实现*/
     private Integer consistentHashWay;
 

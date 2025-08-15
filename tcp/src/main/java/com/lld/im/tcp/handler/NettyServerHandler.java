@@ -10,6 +10,7 @@ import com.lld.im.common.enums.ImConnectStatusEnum;
 import com.lld.im.common.enums.command.SystemCommand;
 import com.lld.im.common.model.UserClientDto;
 import com.lld.im.common.model.UserSession;
+import com.lld.im.tcp.publish.MqMessageProducer;
 import com.lld.im.tcp.redis.RedisManager;
 import com.lld.im.tcp.utils.SessionSocketHolder;
 import io.netty.channel.ChannelHandlerContext;
@@ -88,6 +89,8 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Message> {
             SessionSocketHolder.removeUserSession((NioSocketChannel) ctx.channel());
         }else if(command== SystemCommand.PING.getCommand()){
             ctx.channel().attr(AttributeKey.valueOf(Constants.ReadTime)).set(System.currentTimeMillis());
+        }else{
+            MqMessageProducer.sendMessage(msg,command);
         }
     }
 //该类专注写业务逻辑，在HeartBeatHandler处理器中处理读写超时事件

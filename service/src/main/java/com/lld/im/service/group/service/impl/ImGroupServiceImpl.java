@@ -347,8 +347,8 @@ public class ImGroupServiceImpl implements ImGroupService {
         query.eq("app_id", appId);
         query.eq("group_id", groupId);
         ImGroupEntity imGroupEntity = imGroupDataMapper.selectOne(query);
-
-        if (imGroupEntity == null) {
+        //+增加了对群状态的判断（群解散的话也算是不存在）+
+        if (imGroupEntity == null||imGroupEntity.getStatus().equals(GroupStatusEnum.DESTROY)) {
             return ResponseVO.errorResponse(GroupErrorCode.GROUP_IS_NOT_EXIST);
         }
         return ResponseVO.successResponse(imGroupEntity);

@@ -5,6 +5,7 @@ import com.lld.im.common.enums.ImUrlRouteWayEnum;
 import com.lld.im.common.enums.RouteHashMethodEnum;
 import com.lld.im.common.route.RouteHandle;
 import com.lld.im.common.route.algorithm.consistenthash.AbstractConsistentHash;
+import com.lld.im.service.utils.SnowflakeIdWorker;
 import org.I0Itec.zkclient.ZkClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -63,5 +64,19 @@ public RouteHandle routeHandle() throws Exception {
     @Bean
     public ZkClient zkClient() {
         return new ZkClient(appConfig.getZkAddr(), appConfig.getZkConnectTimeOut());
+    }
+
+    /**
+     * - 将自定义的 `EasySqlInjector` 注册到 Spring 容器中，替代 MyBatis-Plus 默认的 `DefaultSqlInjector`。
+     * - 这样框架在启动时，会使用 `EasySqlInjector` 来解析 `mapper` 接口，从而识别并注入 `insertBatchSomeColumn` 等扩展方法。
+     * @return
+     */
+    @Bean
+    public EasySqlInjector easySqlInjector () {
+        return new EasySqlInjector();
+    }
+    @Bean
+    public SnowflakeIdWorker buildSnowflakeSeq(){
+        return new SnowflakeIdWorker(0);
     }
 }

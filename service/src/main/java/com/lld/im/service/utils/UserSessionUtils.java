@@ -47,7 +47,7 @@ public class UserSessionUtils {
         String userSessionKey=appId+ Constants.RedisConstants.UserSessionConstants+userId;
         String hashKey=clientType+":"+imei;
         Object o = stringRedisTemplate.opsForHash().get(userSessionKey, hashKey);
-        UserSession userSession= JSON.parseObject(JSON.toJSONString(o),UserSession.class);
+        UserSession userSession= JSON.parseObject(o.toString(),UserSession.class);
         return userSession;
     }
 

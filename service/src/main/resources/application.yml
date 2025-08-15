@@ -33,6 +33,8 @@ appConfig:
   imRouteWay: 1 # 路由策略 1随机 2轮询 3hash
   consistentHashWay: 1 # 如果选用一致性hash的话具体hash算法 1 TreeMap 2 自定义Map
   callbackUrl: http://127.0.0.1:8989/callback
+  sendMessageCheckFriend: false # 发送消息是否校验关系链
+  sendMessageCheckBlack: false # 发送消息是否校验黑名单
   modifyUserAfterCallback: true # 用户资料变更之后回调开关
   addFriendAfterCallback: false # 添加好友之后回调开关
   addFriendBeforeCallback: false # 添加好友之前回调开关

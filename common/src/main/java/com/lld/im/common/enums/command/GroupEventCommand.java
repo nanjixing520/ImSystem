@@ -1,5 +1,5 @@
 package com.lld.im.common.enums.command;
-
+//2开头都是群的操作
 public enum GroupEventCommand implements Command {
 
 
