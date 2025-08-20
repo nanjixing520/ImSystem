@@ -33,7 +33,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
-        <!--    spring boot web    -->
+        <!--    spring boot web
+        依赖作用：spring-boot-starter-web 是 Spring Boot 提供的 “Web 开发一站式依赖”，内部自动包含：
+        嵌入式 Tomcat（tomcat-embed-core 等）；
+        Spring MVC 框架（处理 Controller、RequestMapping 等）；
+        HTTP 相关工具类。
+       触发逻辑：Spring Boot 启动时，会扫描依赖中的 “Web 相关类”,自动初始化 Tomcat 并绑定端口-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

@@ -38,6 +38,14 @@ public class Constants {
          * userSign，格式：appId:userSign:
          */
         public static final String userSign = "userSign";
+        /**
+         * 缓存客户端消息防重，格式： appId + :cacheMessage: + messageId
+         */
+        public static final String cacheMessage = "cacheMessage";
+        /**
+         * 离线消息
+         */
+        public static final String OfflineMessage = "offlineMessage";
 
     }
     public static class RabbitConstants{
@@ -96,4 +104,25 @@ public class Constants {
         public static final String SendMessageBefore = "message.send.before";
 
     }
+    public static class SeqConstants {
+        public static final String Message = "messageSeq";
+
+        public static final String GroupMessage = "groupMessageSeq";
+
+
+        public static final String Friendship = "friendshipSeq";
+
+//        public static final String FriendshipBlack = "friendshipBlackSeq";
+
+        public static final String FriendshipRequest = "friendshipRequestSeq";
+
+        public static final String FriendshipGroup = "friendshipGrouptSeq";
+
+        public static final String Group = "groupSeq";
+
+        public static final String Conversation = "conversationSeq";
+
+    }
+
+
 }

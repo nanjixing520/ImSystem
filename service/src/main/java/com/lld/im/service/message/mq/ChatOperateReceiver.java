@@ -5,6 +5,9 @@ import com.alibaba.fastjson.JSONObject;
 import com.lld.im.common.constant.Constants;
 import com.lld.im.common.enums.command.MessageCommand;
 import com.lld.im.common.model.message.MessageContent;
+import com.lld.im.common.model.message.MessageReadedContent;
+import com.lld.im.common.model.message.MessageReciveAckContent;
+import com.lld.im.service.message.service.MessageSyncService;
 import com.lld.im.service.message.service.P2PMessageService;
 import com.rabbitmq.client.Channel;
 import org.slf4j.Logger;
@@ -34,6 +37,8 @@ import java.util.Map;
 public class ChatOperateReceiver {
     @Autowired
     private P2PMessageService p2PMessageService;
+    @Autowired
+    private MessageSyncService messageSyncService;
     private static Logger logger = LoggerFactory.getLogger(ChatOperateReceiver.class);
     /**
      * 处理从消息队列接收到的聊天消息
@@ -62,10 +67,20 @@ public class ChatOperateReceiver {
             JSONObject jsonObject = JSON.parseObject(msg);
             Integer command = jsonObject.getInteger("command");
             if(command.equals(MessageCommand.MSG_P2P.getCommand())){
-                //处理消息
+                //处理私聊消息
                 MessageContent messageContent
                         = jsonObject.toJavaObject(MessageContent.class);
                 p2PMessageService.process(messageContent);
+            }else if(command.equals(MessageCommand.MSG_RECIVE_ACK.getCommand())){
+                //消息接受方发来的消息接收确认
+                MessageReciveAckContent messageContent
+                        = jsonObject.toJavaObject(MessageReciveAckContent.class);
+                messageSyncService.receiveMark(messageContent);
+            }else if(command.equals(MessageCommand.MSG_READED.getCommand())){
+                //消息接收确认
+                MessageReadedContent messageContent
+                        = jsonObject.toJavaObject(MessageReadedContent.class);
+                messageSyncService.readMark(messageContent);
             }
             channel.basicAck(deliveryTag, false);
         }catch (Exception e){

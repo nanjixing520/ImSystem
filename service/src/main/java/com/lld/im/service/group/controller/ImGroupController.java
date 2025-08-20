@@ -1,6 +1,7 @@
 package com.lld.im.service.group.controller;
 
 import com.lld.im.common.ResponseVO;
+import com.lld.im.common.model.message.CheckSendMessageReq;
 import com.lld.im.service.group.model.req.*;
 import com.lld.im.service.group.service.GroupMessageService;
 import com.lld.im.service.group.service.ImGroupService;
@@ -85,6 +86,15 @@ public class ImGroupController {
         req.setAppId(appId);
         req.setOperater(identifier);
         return ResponseVO.successResponse(groupMessageService.send(req));
+    }
+    /**
+     * 供im服务调用的内部消息前置校验接口，配置拦截器的时候不拦截此请求
+     * @param req
+     * @return
+     */
+    @RequestMapping("/checkSend")
+    public ResponseVO checkSend(@RequestBody @Validated CheckSendMessageReq req){
+        return groupMessageService.imServerPermissionCheck(req.getFromId(), req.getToId(), req.getAppId());
     }
 
 }

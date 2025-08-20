@@ -22,6 +22,9 @@
         <module>
             tcp
         </module>
+        <module>
+            message-store
+        </module>
     </modules>
     <properties>
         <java.version>1.8</java.version>
@@ -64,14 +67,6 @@
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
         </dependency>
-
-
-
-
-
-
-
-
             <!--    protostuff依赖包 begin    -->
             <dependency>
                 <groupId>com.dyuproject.protostuff</groupId>
@@ -124,12 +119,12 @@
                 <artifactId>mybatis-plus-boot-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
-            <!--               <dependency>   -->
-            <!--                   <groupId>com.baomidou</groupId>   -->
-            <!--                   <artifactId>mybatis-plus-generator</artifactId>   -->
-            <!--                   <version>${mybatis-plus.version}</version>   -->
-            <!--               </dependency>   -->
-            <!--    参数校验    -->
+                           <dependency>
+                               <groupId>com.baomidou</groupId>
+                               <artifactId>mybatis-plus-generator</artifactId>
+                               <version>3.3.0</version>
+                           </dependency>
+<!--                参数校验    -->
 <!--            <dependency>-->
 <!--                <groupId>org.hibernate</groupId>-->
 <!--                <artifactId>hibernate-validator</artifactId>-->

@@ -26,7 +26,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(gateWayInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns("/v1/user/login")
-                .excludePathPatterns("/v1/message/checkSend");
+                .excludePathPatterns("/v1/message/checkSend")
+                .excludePathPatterns("/v1/group/checkSend");
     }
 
     @Override

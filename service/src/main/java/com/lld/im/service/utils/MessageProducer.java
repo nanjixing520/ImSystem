@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -64,13 +66,18 @@ public class MessageProducer {
          String body = JSONObject.toJSONString(messagePack);
          return sendMessage(userSession,body);
      }
-    //发送给某一用户的所有端
-    public void sendToUser(String toId, Command command, Object data, Integer appId) {
+    //发送给某一用户的所有端(在实现消息第二个ack的时候，增加了返回值，如果返回的客户端为空，那么说明接收方均不在线)
+    public List<ClientInfo> sendToUser(String toId,Command command,Object data,Integer appId){
         List<UserSession> userSession
                 = userSessionUtils.getUserSession(appId, toId);
+        List<ClientInfo> list = new ArrayList<>();
         for (UserSession session : userSession) {
-            sendPack(toId, command, data, session);
+            boolean b = sendPack(toId, command, data, session);
+            if(b){
+                list.add(new ClientInfo(session.getAppId(),session.getClientType(),session.getImei()));
+            }
         }
+        return list;
     }
    //重载方法（如果客户端类型和设备号为空，那么发送给用户的所有端，否则发送给除此设备以外的其他所有设备）
     public void sendToUser(String toId, Integer clientType,String imei, Command command,

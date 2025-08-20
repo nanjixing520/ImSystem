@@ -31,7 +31,7 @@ public class BootstrapConfig {
         private ZkConfig zkConfig;//zookeeper配置
         private Integer brokerId;//服务器节点唯一标识
         private Integer loginModel;//多端登录同步模式
-        private String logicUrl;
+        private String logicUrl;//业务逻辑层的地址
 
     }
     @Data

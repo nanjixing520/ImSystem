@@ -69,9 +69,9 @@ public class AppConfig {
     private boolean sendGroupMessageAfterCallback; //发送群聊消息之后
 
     private boolean sendGroupMessageBeforeCallback; //发送群聊消息之前
-//
-//    private Integer deleteConversationSyncMode;
-//
-//    private Integer offlineMessageCount;//离线消息最大条数
+
+    private Integer deleteConversationSyncMode;//删除会话多端同步（为1就是开启）
+
+    private Integer offlineMessageCount;//离线消息最大条数
 
 }

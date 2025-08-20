@@ -51,7 +51,7 @@ public class LimServer {
                         //只传入了全空闲时间，所以只需要专注于全超时事件的处理
                         ch.pipeline().addLast(new IdleStateHandler(0,0,1));
                         ch.pipeline().addLast(new HeartBeatHandler(config.getHeartBeatTime()));
-                        ch.pipeline().addLast(new NettyServerHandler(config.getBrokerId()));
+                        ch.pipeline().addLast(new NettyServerHandler(config.getBrokerId(), config.getLogicUrl()));
                     }
                 });
     }

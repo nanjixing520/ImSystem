@@ -1,6 +1,7 @@
 package com.lld.im.service.message.controller;
 
 import com.lld.im.common.ResponseVO;
+import com.lld.im.common.model.message.CheckSendMessageReq;
 import com.lld.im.service.message.model.req.SendMessageReq;
 import com.lld.im.service.message.service.P2PMessageService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,5 +29,15 @@ public class MessageController {
     public ResponseVO send(@RequestBody @Validated SendMessageReq req, Integer appId)  {
         req.setAppId(appId);
         return ResponseVO.successResponse(p2PMessageService.send(req));
+    }
+
+    /**
+     * 供im服务调用的内部消息前置校验接口，配置拦截器的时候不拦截此请求
+     * @param req
+     * @return
+     */
+    @RequestMapping("/checkSend")
+    public ResponseVO checkSend(@RequestBody @Validated CheckSendMessageReq req)  {
+        return p2PMessageService.imServerPermissionCheck(req.getFromId(),req.getToId(),req.getAppId());
     }
 }
