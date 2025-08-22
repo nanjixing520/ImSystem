@@ -53,8 +53,8 @@ public class RedisConfig {
         template.setKeySerializer(new StringRedisSerializer());
 
         // 3. 配置 value 的序列化器（用上面定义的 JSON 序列化器）
-        // 注意：这里代码中有一行被注释，实际生效的是下面的 hash 相关配置
-        // template.setValueSerializer(new StringRedisSerializer());  // 这行被注释了，不生效
+        //操作普通类型（如 ZSet、String、List 等）
+         template.setValueSerializer(new StringRedisSerializer());
 
         // 4. 配置 Hash 类型的键和值的序列化器
         // Hash 是 Redis 中的一种结构（类似 Java 的 Map），需要单独配置其键值的序列化方式

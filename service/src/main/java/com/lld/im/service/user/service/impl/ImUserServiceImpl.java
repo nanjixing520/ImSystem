@@ -11,6 +11,7 @@ import com.lld.im.common.enums.DelFlagEnum;
 import com.lld.im.common.enums.UserErrorCode;
 import com.lld.im.common.enums.command.UserEventCommand;
 import com.lld.im.common.exception.ApplicationException;
+import com.lld.im.service.group.service.ImGroupService;
 import com.lld.im.service.user.dao.ImUserDataEntity;
 import com.lld.im.service.user.dao.mapper.ImUserDataMapper;
 import com.lld.im.service.user.model.req.*;
@@ -21,12 +22,14 @@ import com.lld.im.service.utils.CallbackService;
 import com.lld.im.service.utils.MessageProducer;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * ClassName: ImUserServiceImpl
@@ -47,6 +50,10 @@ public class ImUserServiceImpl implements ImUserService {
     private CallbackService callbackService;
     @Autowired
     private MessageProducer messageProducer;
+    @Autowired
+    private StringRedisTemplate stringRedisTemplate;
+    @Autowired
+    private ImGroupService imGroupService;
     @Override
     public ResponseVO importUser(ImportUserReq req) {
         if(req.getUserData().size()>100){
@@ -192,5 +199,21 @@ public class ImUserServiceImpl implements ImUserService {
     @Override
     public ResponseVO login(LoginReq req) {
         return ResponseVO.successResponse();
+    }
+
+    /**
+     * 获得该用户在服务端的各数据最大序列号
+     * 注意:
+     *  用户的各数据最大seq已经写入到了redis中进行维护，可以直接从redis中进行获取，
+     *  但是群组没有写入，只能通过实时查询数据库获取
+     * @param req
+     * @return
+     */
+    @Override
+    public ResponseVO getUserSequence(GetUserSequenceReq req) {
+        Map<Object, Object> map = stringRedisTemplate.opsForHash().entries(req.getAppId() + ":" + Constants.RedisConstants.SeqPrefix + ":" + req.getUserId());
+        Long groupSeq = imGroupService.getUserGroupMaxSeq(req.getUserId(),req.getAppId());
+        map.put(Constants.SeqConstants.Group,groupSeq);
+        return ResponseVO.successResponse(map);
     }
 }

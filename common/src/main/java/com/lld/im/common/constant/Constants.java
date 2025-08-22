@@ -46,6 +46,20 @@ public class Constants {
          * 离线消息
          */
         public static final String OfflineMessage = "offlineMessage";
+        /**
+         * seq 前缀
+         */
+        public static final String SeqPrefix = "seq";
+
+        /**
+         * 用户订阅列表，格式 ：appId + :subscribe: + userId。Hash结构，filed为订阅自己的人
+         */
+        public static final String subscribe = "subscribe";
+
+        /**
+         * 用户自定义在线状态，格式 ：appId + :userCustomerStatus: + userId。set，value为用户id
+         */
+        public static final String userCustomerStatus = "userCustomerStatus";
 
     }
     public static class RabbitConstants{

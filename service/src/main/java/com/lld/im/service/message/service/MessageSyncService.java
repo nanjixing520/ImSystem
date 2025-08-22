@@ -1,19 +1,30 @@
 package com.lld.im.service.message.service;
 
+import com.alibaba.fastjson.JSONObject;
+import com.baomidou.mybatisplus.core.toolkit.CollectionUtils;
 import com.lld.im.codec.pack.message.MessageReadedPack;
+import com.lld.im.common.ResponseVO;
+import com.lld.im.common.constant.Constants;
 import com.lld.im.common.enums.ConversationTypeEnum;
 import com.lld.im.common.enums.command.Command;
 import com.lld.im.common.enums.command.GroupEventCommand;
 import com.lld.im.common.enums.command.MessageCommand;
-import com.lld.im.common.model.message.GroupChatMessageContent;
-import com.lld.im.common.model.message.MessageContent;
-import com.lld.im.common.model.message.MessageReadedContent;
-import com.lld.im.common.model.message.MessageReciveAckContent;
+import com.lld.im.common.model.SyncReq;
+import com.lld.im.common.model.SyncResp;
+import com.lld.im.common.model.message.*;
 import com.lld.im.service.conversation.service.ConversationService;
 import com.lld.im.service.utils.MessageProducer;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.DefaultTypedTuple;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Service;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * ClassName: MessageSyncService
@@ -30,6 +41,8 @@ public class MessageSyncService {
     MessageProducer messageProducer;
     @Autowired
     ConversationService conversationService;
+    @Autowired
+    RedisTemplate redisTemplate;
 
     /**
      * 逻辑层将消息接收端返回的消息接受ack转发给消息发送端的所有客户端
@@ -104,5 +117,49 @@ public class MessageSyncService {
         messageProducer.sendToUser(messageReadedPack.getToId(),GroupEventCommand.MSG_GROUP_READED_RECEIPT
                     ,messageReaded,messageReaded.getAppId());
 
+    }
+
+    /**
+     * 同步离线消息(存储在redis中)
+     *  基于 ZSet 的分数（序列号）实现
+     *  score：messageKey 消息主键是根据雪花算法生成的，可以体现消息产生的先后顺序，所以作为序列号
+     * @param req
+     * @return
+     */
+    public ResponseVO syncOfflineMessage(SyncReq req) {
+
+        SyncResp<OfflineMessageContent> resp = new SyncResp<>();
+
+        String key = req.getAppId() + ":" + Constants.RedisConstants.OfflineMessage + ":" + req.getOperater();
+        //获取离线消息最大的seq（实际是消息主键）
+        Long maxSeq = 0L;
+        ZSetOperations zSetOperations = redisTemplate.opsForZSet();
+        //将消息队列倒序查询第一个元素（默认是升序，倒序就是降序），查询的就是最新的消息序列号，也就是最大的序列号
+        Set set = zSetOperations.reverseRangeWithScores(key, 0, 0);
+        if(!CollectionUtils.isEmpty(set)){
+            List list = new ArrayList(set);
+            DefaultTypedTuple o = (DefaultTypedTuple) list.get(0);
+            maxSeq = o.getScore().longValue();
+        }
+        List<OfflineMessageContent> respList = new ArrayList<>();
+        resp.setMaxSequence(maxSeq);
+        //根据score范围正序查询 ZSet 中的元素 序列号在 [lastSequence, maxSeq] 范围内
+        //最后两个参数依次是偏移量（从筛选结果的第 offset 条开始取），提取数量（从 offset 开始，最多取 count 条）
+        Set<ZSetOperations.TypedTuple> querySet = zSetOperations.rangeByScoreWithScores(key,
+                req.getLastSequence(), maxSeq, 0, req.getMaxLimit());
+        for (ZSetOperations.TypedTuple<String> typedTuple : querySet) {
+            String value = typedTuple.getValue();
+            OfflineMessageContent offlineMessageContent = JSONObject.parseObject(value, OfflineMessageContent.class);
+            respList.add(offlineMessageContent);
+        }
+        resp.setDataList(respList);
+
+        if(!CollectionUtils.isEmpty(respList)){
+            //获取本次拉取到的离线消息中最新的消息
+            OfflineMessageContent offlineMessageContent = respList.get(respList.size() - 1);
+            resp.setCompleted(maxSeq <= offlineMessageContent.getMessageKey());
+        }
+
+        return ResponseVO.successResponse(resp);
     }
 }

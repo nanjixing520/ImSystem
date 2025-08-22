@@ -49,4 +49,6 @@ public interface ImGroupMemberService {
     public List<String> getGroupMemberId(String groupId, Integer appId);
 
     public List<GroupMemberDto> getGroupManager(String groupId, Integer appId);
+
+    public ResponseVO<Collection<String>> syncMemberJoinedGroup(String userId, Integer appId);
 }

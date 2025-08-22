@@ -294,6 +294,11 @@ public class ImGroupMemberServiceImpl implements ImGroupMemberService {
         return ResponseVO.successResponse(groupMember);
     }
 
+    /**
+     * 获得用户所加入的所有群组id（包含已经退群的）
+     * @param req
+     * @return
+     */
     @Override
     public ResponseVO<Collection<String>> getMemberJoinedGroup(GetJoinedGroupReq req) {
         if (req.getLimit() != null) {
@@ -650,4 +655,14 @@ public class ImGroupMemberServiceImpl implements ImGroupMemberService {
         return imGroupMemberMapper.getGroupManager(groupId, appId);
     }
 
+    /**
+     * 获取该用户目前所在的所有群组id
+     * @param operater
+     * @param appId
+     * @return
+     */
+    @Override
+    public ResponseVO<Collection<String>> syncMemberJoinedGroup(String operater, Integer appId) {
+        return ResponseVO.successResponse(imGroupMemberMapper.syncJoinedGroupId(appId,operater,GroupMemberRoleEnum.LEAVE.getCode()));
+    }
 }

@@ -1,6 +1,7 @@
 package com.lld.im.service.group.controller;
 
 import com.lld.im.common.ResponseVO;
+import com.lld.im.common.model.SyncReq;
 import com.lld.im.common.model.message.CheckSendMessageReq;
 import com.lld.im.service.group.model.req.*;
 import com.lld.im.service.group.service.GroupMessageService;
@@ -95,6 +96,11 @@ public class ImGroupController {
     @RequestMapping("/checkSend")
     public ResponseVO checkSend(@RequestBody @Validated CheckSendMessageReq req){
         return groupMessageService.imServerPermissionCheck(req.getFromId(), req.getToId(), req.getAppId());
+    }
+    @RequestMapping("/syncJoinedGroup")
+    public ResponseVO syncJoinedGroup(@RequestBody @Validated SyncReq req, Integer appId, String identifier)  {
+        req.setAppId(appId);
+        return groupService.syncJoinedGroupList(req);
     }
 
 }
