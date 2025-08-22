@@ -5,6 +5,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.TypeReference;
 import com.lld.im.codec.pack.LoginPack;
 import com.lld.im.codec.pack.message.ChatMessageAck;
+import com.lld.im.codec.pack.user.LoginAckPack;
+import com.lld.im.codec.pack.user.UserStatusChangeNotifyPack;
 import com.lld.im.codec.proto.Message;
 import com.lld.im.codec.proto.MessagePack;
 import com.lld.im.common.ResponseVO;
@@ -13,6 +15,7 @@ import com.lld.im.common.enums.ImConnectStatusEnum;
 import com.lld.im.common.enums.command.GroupEventCommand;
 import com.lld.im.common.enums.command.MessageCommand;
 import com.lld.im.common.enums.command.SystemCommand;
+import com.lld.im.common.enums.command.UserEventCommand;
 import com.lld.im.common.model.UserClientDto;
 import com.lld.im.common.model.UserSession;
 import com.lld.im.common.model.message.CheckSendMessageReq;
@@ -88,19 +91,35 @@ public class NettyServerHandler extends SimpleChannelInboundHandler<Message> {
                 e.printStackTrace();
             }
             //初始化完属性之后调用redis客户端去保存（启动的时候就要初始化redis客户端,连接地址密码等用配置文件加载）
-            //TODO：存到redis
             RedissonClient redissonClient = RedisManager.getRedissonClient();
             RMap<String, String> map = redissonClient.getMap(msg.getMessageHeader().getAppId() + Constants.RedisConstants.UserSessionConstants + loginPack.getUserId());
             map.put(msg.getMessageHeader().getClientType()+":"+msg.getMessageHeader().getImei(),JSONObject.toJSONString(userSession));
             //将channel存起来
             SessionSocketHolder.put(msg.getMessageHeader().getAppId(),loginPack.getUserId(),msg.getMessageHeader().getClientType(),msg.getMessageHeader().getImei(),(NioSocketChannel) ctx.channel());
+            //将登录消息发送给所有的服务器，处理下线问题 [使用广播模式来踢掉其他冲突的端]
             UserClientDto userClientDto = new UserClientDto();
             userClientDto.setClientType(msg.getMessageHeader().getClientType());
             userClientDto.setUserId(loginPack.getUserId());
             userClientDto.setAppId(msg.getMessageHeader().getAppId());
             userClientDto.setImei(msg.getMessageHeader().getImei());
+            //使用Redis的发布订阅模式
             RTopic topic = redissonClient.getTopic(Constants.RedisConstants.UserLoginChannel);
             topic.publish(JSONObject.toJSONString(userClientDto));
+            //将状态变更通知给逻辑层
+            UserStatusChangeNotifyPack userStatusChangeNotifyPack = new UserStatusChangeNotifyPack();
+            userStatusChangeNotifyPack.setAppId(msg.getMessageHeader().getAppId());
+            userStatusChangeNotifyPack.setUserId(loginPack.getUserId());
+            userStatusChangeNotifyPack.setStatus(ImConnectStatusEnum.ONLINE_STATUS.getCode());
+            MqMessageProducer.sendMessage(userStatusChangeNotifyPack,msg.getMessageHeader(), UserEventCommand.USER_ONLINE_STATUS_CHANGE.getCommand());
+            //回复登录成功的ack给登录方
+            MessagePack<LoginAckPack> loginSuccess = new MessagePack<>();
+            LoginAckPack loginAckPack = new LoginAckPack();
+            loginAckPack.setUserId(loginPack.getUserId());
+            loginSuccess.setCommand(SystemCommand.LOGINACK.getCommand());
+            loginSuccess.setData(loginAckPack);
+            loginSuccess.setImei(msg.getMessageHeader().getImei());
+            loginSuccess.setAppId(msg.getMessageHeader().getAppId());
+            ctx.channel().writeAndFlush(loginSuccess);
         }else if(command== SystemCommand.LOGOUT.getCommand()){
             //删除session（内存中的channel）
             //删除redis中的路由关系

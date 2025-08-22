@@ -21,7 +21,15 @@
     <artifactId>
         codec
     </artifactId>
-
+<dependencies>
+    <dependency>
+        <groupId>com.lld</groupId>
+        <artifactId>common</artifactId>
+        <version>
+            1.0-SNAPSHOT
+        </version>
+    </dependency>
+</dependencies>
     <properties>
         <maven.compiler.source>
             8

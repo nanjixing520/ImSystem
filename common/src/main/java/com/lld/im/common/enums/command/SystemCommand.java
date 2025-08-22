@@ -16,6 +16,9 @@ public enum SystemCommand implements Command {
      * 登录9000
      */
     LOGIN(0x2328),
+    //登录ack  9001
+    LOGINACK(0x2329),
+
     //登出  9003
     LOGOUT(0x232b),
     //心跳 9999

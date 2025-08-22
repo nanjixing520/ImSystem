@@ -41,6 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -552,6 +553,11 @@ public class ImFriendServiceImpl implements ImFriendShipService {
         //如果没有符合条件的数据，说明数据是同步的，已完成增量拉取
         resp.setCompleted(true);
         return ResponseVO.successResponse(resp);
+    }
+
+    @Override
+    public List<String> getAllFriendId(String userId, Integer appId) {
+        return imFriendShipMapper.getAllFriendId(userId,appId);
     }
 
 

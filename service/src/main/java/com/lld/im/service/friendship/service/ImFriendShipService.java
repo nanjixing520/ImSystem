@@ -5,6 +5,8 @@ import com.lld.im.common.model.RequestBase;
 import com.lld.im.common.model.SyncReq;
 import com.lld.im.service.friendship.model.req.*;
 
+import java.util.List;
+
 /**
  * ClassName: ImFriendService
  * Package: com.lld.im.service.friendship.service
@@ -28,4 +30,5 @@ public interface ImFriendShipService {
     public ResponseVO deleteBlack(DeleteBlackReq req);
     public ResponseVO checkBlck(CheckFriendShipReq req);
     public ResponseVO syncFriendshipList(SyncReq req);
+    public List<String> getAllFriendId(String userId, Integer appId);
 }
