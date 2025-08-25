@@ -1,5 +1,6 @@
 package com.lld.im.service.message.service;
 
+import com.alibaba.fastjson.JSONObject;
 import com.lld.im.codec.pack.message.ChatMessageAck;
 import com.lld.im.codec.pack.message.MessageReciveServerAckPack;
 import com.lld.im.common.ResponseVO;
@@ -13,6 +14,7 @@ import com.lld.im.common.model.message.OfflineMessageContent;
 import com.lld.im.service.message.model.req.SendMessageReq;
 import com.lld.im.service.message.model.resp.SendMessageResp;
 import com.lld.im.service.seq.RedisSeq;
+import com.lld.im.service.utils.CallbackService;
 import com.lld.im.service.utils.ConversationIdGenerate;
 import com.lld.im.service.utils.MessageProducer;
 import org.slf4j.Logger;
@@ -53,6 +55,10 @@ public class P2PMessageService {
     RedisSeq redisSeq;
     @Autowired
     MessageSyncService messageSyncService;
+    @Autowired
+    AppConfig appConfig;
+    @Autowired
+    CallbackService callbackService;
     private final ThreadPoolExecutor threadPoolExecutor;
 
     {
@@ -93,6 +99,22 @@ public class P2PMessageService {
             });
             return;
         }
+        //发送消息之前回调，以下为该回调所在的位置条件
+        //位置在查询缓存之后，如果缓存中有消息，说明该消息之前回调成功，已经入库并且可以转发，那么直接转发即可，不需要再次回调判断
+        //位置在获取seq之前，如果回调失败消息无需进行入库及转发操作，如果先获取序列号，那么该序列号无效的被自增1
+        //获取设置seq就是为了消息入库之后增量拉取用的，所以如果入库条件不满足，也无需分配序列号
+        ResponseVO responseVO=ResponseVO.successResponse();
+        if(appConfig.isSendMessageBeforeCallback()){
+            responseVO = callbackService.beforeCallback(appId, Constants.CallbackCommand.SendMessageBefore,
+                    JSONObject.toJSONString(messageContent));
+        }
+        //回调失败，返回给客户端失败的ack
+        if(!responseVO.isOk()){
+            ack(messageContent,responseVO);
+            return;
+        }
+
+
         //消息持久化之前分配序列号
         //序列号格式：appId+seq常量+(from+to)/groupId
         long seq = redisSeq.doGetSeq(appId+":"+ Constants.SeqConstants.Message
@@ -133,6 +155,11 @@ public class P2PMessageService {
                 }
                 //更新发送消息方会话的消息序列号（已读情况）
                 messageSyncService.fromedReadMark(messageContent);
+                //发送消息之后回调
+                if(appConfig.isSendMessageAfterCallback()){
+                    callbackService.callback(appId,Constants.CallbackCommand.SendMessageAfter,
+                            JSONObject.toJSONString(messageContent));
+                }
                 logger.info("service message ack success");
             });
 //        }else{

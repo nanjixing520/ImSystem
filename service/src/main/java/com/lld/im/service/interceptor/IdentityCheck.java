@@ -65,6 +65,7 @@ public class IdentityCheck {
         //取出解密后的appid 和 操作人 和 过期时间做匹配，不通过则提示错误
         Long expireTime = 0L;//到期时间（具体的点单位秒）
         Long expireSec = 0L;//过期时间（时间段单位秒）
+        Long time = 0L;
         String decoerAppId = "";
         String decoderidentifier = "";
 
@@ -74,6 +75,7 @@ public class IdentityCheck {
             String expireStr = jsonObject.get("TLS.expire").toString();//过期时间（时间段单位毫秒）
             String expireTimeStr = jsonObject.get("TLS.expireTime").toString();//生成密钥的那个时刻，不是此时此刻（具体的点，单位秒）
             expireSec = Long.valueOf(expireStr)/1000 ;//过期时间（时间段单位秒）
+            time = Long.valueOf(expireTimeStr);
             expireTime = Long.valueOf(expireTimeStr) + expireSec;//到期时间（具体的点单位秒）
         }catch (Exception e){
             e.printStackTrace();
@@ -98,15 +100,19 @@ public class IdentityCheck {
         }
 
         //appid + "xxx" + userId + sign
+        String genSig = sigAPI.genUserSig(identifier, expireSec,time,null);
+        if (genSig.toLowerCase().equals(userSig.toLowerCase())) {
+            String key = appId + ":" + Constants.RedisConstants.userSign + ":"
+                    +identifier + userSig;
 
-        String key = appId + ":" + Constants.RedisConstants.userSign + ":"
-                +identifier + userSig;
-
-        Long etime = expireTime - System.currentTimeMillis() / 1000;//此时用户访问时距离过期剩下的时间段（单位秒），相当于redis中的存活时间TTL
-        stringRedisTemplate.opsForValue().set(
-                key,expireTime.toString(),etime, TimeUnit.SECONDS
-        );
-        return BaseErrorCode.SUCCESS;
+            Long etime = expireTime - System.currentTimeMillis() / 1000;
+            stringRedisTemplate.opsForValue().set(
+                    key,expireTime.toString(),etime, TimeUnit.SECONDS
+            );
+            this.setIsAdmin(identifier,Integer.valueOf(appId));
+            return BaseErrorCode.SUCCESS;
+        }
+        return GateWayErrorCode.USERSIGN_IS_ERROR;
     }
 
 

@@ -125,7 +125,7 @@ public class GroupMessageService {
 //        }
     }
 
-    //分发消息给发送端
+    //发消息给除了自己的群成员的在线端
     private void dispatchMessage(GroupChatMessageContent messageContent){
         for (String memberId : messageContent.getMemberId()) {
             if(!memberId.equals(messageContent.getFromId())){
